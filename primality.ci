@@ -1,11 +1,18 @@
-mainmodule Primality {
+mainmodule primality {
+
+  readonly CProxy_Main mainProxy;
+  readonly int numChares;
+  readonly CProxy_Primer primeArray;
+
   mainchare Main {
-    // Main's entry methods
     entry Main(CkArgMsg *m);
     entry void done();
+    entry void checkIn(int isPrime, int id, int number);
   };
-  chare Primer {
-    entry Primer(); //what is the purpose of this
-    entry boolean isPrime(const long number);
+
+  array [1D] Primer {
+    entry Primer();
+    entry void isPrime(int number, int id);
   };
+  
 };
