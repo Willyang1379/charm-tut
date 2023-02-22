@@ -2,17 +2,18 @@ mainmodule primality {
 
   readonly CProxy_Main mainProxy;
   readonly int numChares;
-  readonly CProxy_Primer primeArray;
+  readonly CProxy_Primality primeProxy;
 
   mainchare Main {
     entry Main(CkArgMsg *m);
     entry void done();
-    entry void checkIn(int isPrime, int id, int number);
+    entry void checkIn();
   };
 
-  array [1D] Primer {
-    entry Primer();
-    entry void isPrime(int number, int id);
+  array [1D] Primality {
+    entry Primality();
+    entry void isPrime();
+    entry void sendData(std::vector<int> sec);
   };
   
 };

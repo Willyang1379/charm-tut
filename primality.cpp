@@ -4,31 +4,37 @@
 #include "primality.decl.h"
 using namespace std;
 
-//ask about the purpose of main proxy, *know it is a way for system to recognize and track chares, is
-// it necessary when we only have the main chare being deployed?
-/*readonly*/ CProxy_Main mainProxy; 
-/*readonly*/ int numChares; 
-/*readonly*/ CProxy_Primer primeArray; 
-int chareCount;
-vector <pair<int, const char*>> finArr;
+CProxy_Main mainProxy;
+CProxy_Primality primeProxy;
+int numChares; 
+int primeNums;
+double startTime;
+double endTime;
 
 class Main : public CBase_Main
 {
 public:
   Main(CkArgMsg* m)
   {
-
     //fire up main chare and subchares, also create storage array
-    chareCount = 0;
     mainProxy = thisProxy;
-    int num = atoi(m->argv[1]);
-    numChares = num;
-    CProxy_Primer primeProxy = CProxy_Primer::ckNew(num);
+    primeNums = atoi(m->argv[1]);
+    numChares = primeNums/4;
+    primeProxy = CProxy_Primality::ckNew(numChares);
+    stepCount = 0;
+    startTime = CkTimer();
 
-    //loop through K times and call check prime method
-    for (int i = 0; i < num; i++) {
-        int num = rand();
-        primeProxy[i].isPrime(num, i);
+    //loop through K times and add to prime number array, once the array is full, let subchare compute primality
+    int count = 0;
+    vector <int> section;
+    for (int i = 0; i < primeNums; i++) {
+        int number = rand();
+        section.push_back(number);
+        if (section.size() % numChares == 0) {
+          primeProxy[count++].sendData(section);
+          section.clear();
+        }
+    primeProxy.isPrime(); 
     }
   };
 
@@ -39,41 +45,48 @@ public:
     CkExit();
   };
 
-  void checkIn(int isPrime, int id, int number) {
-    chareCount += 1;
-    if (isPrime == 1) {
-      finArr.push_back(pair<int, const char*>(number, "True"));
-    } else {
-      finArr.push_back(pair<int, const char*>(number, "False"));
+  void checkIn() {
+    stepCount++;
+    if (stepCount == numChares) {
+      endTime = CkTimer();
+      done();
     }
-    if (chareCount == numChares) { 
-        //array should be filled, print and terminate main chare
-      for (int i = 0; i < numChares; i++) {
-        CkPrintf("Integer %d is Prime: %s.\n", finArr[i].first, finArr[i].second);
-      }
-      mainProxy.done(); }
   }
 };
 
-class Primer : public CBase_Primer {
+
+class Primality : public CBase_Primality {
   public:
-    Primer() {}
+    Primality() {}
 
-  void isPrime(int number, int id) {
+  void isPrime() {
     // calculate whether the number sent is prime, then check in with main proxy
-    int chareID = id;
-    int isPrime = 1;
+    vector <pair<int, const char*>> finalArray;
+    for (int i = 0; i < primeNum.size(); i++) {
+      int isPrime = 1;
+      if(primeNum[i]<=1) {
+        isPrime = 0;
+      }
 
-    if(number<=1) {
-      isPrime = 0;
+      for(int i=2; i<primeNum[i]; i++)
+      {
+        if (0 == primeNum[i]%i)
+        isPrime = 0;
+      }
+      if (isPrime == 1) {
+        finalArray.push_back(pair<int, const char*>(primeNum[i], "True"));
+      } else {
+        finalArray.push_back(pair<int, const char*>(primeNum[i], "False"));
+      }
     }
+    for (int i = 0; i < finalArray.size(); i++) {
+        CkPrintf("Integer %d is Prime: %s.\n", finalArray[i].first, finalArray[i].second);
+    }
+    mainProxy.checkIn();
+  }
 
-    for(int i=2; i<number; i++)
-    {
-      if (0 == number%i)
-      isPrime = 0;
-    }
-    mainProxy.checkIn(isPrime, chareID, number);
+  void sendData(vector<int> section) {
+    primeNum = section;
   }
 
 };
